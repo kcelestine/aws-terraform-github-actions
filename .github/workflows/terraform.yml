@@ -1,28 +1,40 @@
-name: 'Terraform'
+name: OIDC Continuous Deployment
 
+# This workflow is triggered whenever commits are pushed to the main branch
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
+    branches:
+      - 'main'
+  workflow_dispatch:
 
 permissions:
+  id-token: write
   contents: read
 
+defaults:
+  run:
+    shell: bash
+    # Define the working directory for all run steps in the workflow
+    working-directory: .
+
 jobs:
-  terraform:
-    name: 'Terraform'
-    runs-on: ubuntu-latest
+
+  deploy_production:
     environment: production
-
-    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
-    defaults:
-      run:
-        shell: bash
-
+    name: 'Deploy to production'
+    runs-on: ubuntu-latest
+    
     steps:
-    # Checkout the repository to the GitHub Actions runner
-    - name: Checkout
-      uses: actions/checkout@v3
+    
+    - uses: actions/checkout@v2
+      name: 'Checkout repository'
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: arn:aws:iam::754274460955:role/gh-role
+        role-session-name: rolesessionKhadijah
+        aws-region: us-east-1
 
     # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
     - name: Setup Terraform
@@ -42,8 +54,4 @@ jobs:
     - name: Terraform Plan
       run: terraform plan -input=false
 
-      # On push to "main", build or change infrastructure according to Terraform configuration files
-      # Note: It is recommended to set up a required "strict" status check in your repository for "Terraform Cloud". See the documentation on "strict" required status checks for more information: https://help.github.com/en/github/administering-a-repository/types-of-required-status-checks
-    - name: Terraform Apply
-      if: github.ref == 'refs/heads/"main"' && github.event_name == 'push'
-      run: terraform apply -auto-approve -input=false
+
